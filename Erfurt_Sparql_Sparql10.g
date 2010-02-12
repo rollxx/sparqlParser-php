@@ -8,7 +8,7 @@ grammar Erfurt_Sparql_Sparql10 ;
 
 options {
   language = Php;
-  k = 1;
+//  k = 1;
 //  memoize = true;
 }
 
@@ -224,7 +224,7 @@ functionCall returns [$value]
 /* sparql 1.0 r29 */
 argList returns [$value]
 @init{\$value=array();}
-    : NIL
+    : OPEN_BRACE WS* CLOSE_BRACE
     | OPEN_BRACE e1=expression {\$value []= $e1.value;}
         ( COMMA e2=expression {\$value []= $e2.value;})* CLOSE_BRACE
     ;
@@ -333,7 +333,7 @@ graphTerm returns [$value]
     | v=numericLiteral {\$value=$v.value;}
     | v=booleanLiteral {\$value=$v.value;}
     | v=blankNode {\$value=$v.value;}
-    | NIL {\$value=new Erfurt_Sparql_Query2_Nil();}
+    | OPEN_BRACE WS* CLOSE_BRACE {\$value=new Erfurt_Sparql_Query2_Nil();}
     ;
 
 /* sparql 1.0 r46 */
@@ -381,18 +381,18 @@ numericExpression returns [$value]
 /* sparql 1.0 r52 */
 additiveExpression returns [$value]
 @init{\$value = new Erfurt_Sparql_Query2_AdditiveExpression(); \$op=null; \$v2=null;}
-    : m1=multiplicativeExpression {\$value->setElements(array($m1.value));}
+    : m1=multiplicativeExpression {\$value->addElement('+', $m1.value);}
         (( op=PLUS m2=multiplicativeExpression {\$op=$op.text; \$v2=$m2.value;}
         | op=MINUS m2=multiplicativeExpression {\$op=$op.text; \$v2=$m2.value;}
-        | n=numericLiteralPositive {\$op='+'; \$v2=$n.text;}
-        | n=numericLiteralNegative {\$op='-'; \$v2=$n.text;}
+        | n=numericLiteralPositive {\$op='+'; \$v2=$n.value;}
+        | n=numericLiteralNegative {\$op='-'; \$v2=$n.value;}
             ){\$value->addElement(\$op, \$v2);})*
     ;
 
 /* sparql 1.0 r53 */
 multiplicativeExpression returns [$value]
 @init{\$value=new Erfurt_Sparql_Query2_MultiplicativeExpression();}
-    : u1=unaryExpression {\$value->setElements(array($u1.value));}
+    : u1=unaryExpression {\$value->addElement('*', $u1.value);}
         (( op=ASTERISK u2=unaryExpression | op=DIVIDE u2=unaryExpression ){\$value->addElement($op.text, $u2.value);})*
     ;
 
@@ -464,40 +464,41 @@ rdfLiteral returns [$value]
 
 /* sparql 1.0 r61 */
 numericLiteral returns [$value]
-@init{require_once('Erfurt/Sparql/Query2/NumericLiteral.php'); \$v=null;}
-@after{\$value = new Erfurt_Sparql_Query2_NumericLiteral((int)\$v);}
-    : n=numericLiteralUnsigned {\$v=$n.text;}
-	| n=numericLiteralPositive {\$v=$n.text;}
-	| n=numericLiteralNegative {\$v='-'.$n.text;}
+    : (n=numericLiteralUnsigned
+	| n=numericLiteralPositive
+	| n=numericLiteralNegative ) {\$value=$n.value;}
     ;
 
 /* sparql 1.0 r62 */
-numericLiteralUnsigned
-    : INTEGER
-    | DECIMAL
-    | DOUBLE
+numericLiteralUnsigned returns [$value]
+@init{require_once('Erfurt/Sparql/Query2/NumericLiteral.php');}
+    : v=INTEGER {\$value = new Erfurt_Sparql_Query2_NumericLiteral((int)$v.text);}
+    | v=DECIMAL {\$value = new Erfurt_Sparql_Query2_NumericLiteral((float)$v.text);}
+    | v=DOUBLE {\$value = new Erfurt_Sparql_Query2_NumericLiteral((double)$v.text);}
     ;
 
 /* sparql 1.0 r63 */
-numericLiteralPositive
-    : INTEGER_POSITIVE
-    | DECIMAL_POSITIVE
-    | DOUBLE_POSITIVE
+numericLiteralPositive returns [$value]
+@init{require_once('Erfurt/Sparql/Query2/NumericLiteral.php');}
+    : v=INTEGER_POSITIVE {\$value = new Erfurt_Sparql_Query2_NumericLiteral((int)$v.text);}
+    | v=DECIMAL_POSITIVE {\$value = new Erfurt_Sparql_Query2_NumericLiteral((float)$v.text);}
+    | v=DOUBLE_POSITIVE {\$value = new Erfurt_Sparql_Query2_NumericLiteral((double)$v.text);}
     ;
 
 /* sparql 1.0 r64 */
-numericLiteralNegative
-    : INTEGER_NEGATIVE
-    | DECIMAL_NEGATIVE
-    | DOUBLE_NEGATIVE
+numericLiteralNegative returns [$value]
+@init{require_once('Erfurt/Sparql/Query2/NumericLiteral.php');}
+    : v=INTEGER_NEGATIVE {\$value = new Erfurt_Sparql_Query2_NumericLiteral((int)$v.text);}
+    | v=DECIMAL_NEGATIVE {\$value = new Erfurt_Sparql_Query2_NumericLiteral((float)$v.text);}
+    | v=DOUBLE_NEGATIVE {\$value = new Erfurt_Sparql_Query2_NumericLiteral((double)$v.text);}
     ;
 
 /* sparql 1.0 r65 */
 booleanLiteral returns [$value]
-@init{require_once 'Erfurt/Sparql/Query2/BooleanLiteral.php';}
-@after{\$value = new Erfurt_Sparql_Query2_BooleanLiteral((bool)$v.text);}
-    : v=TRUE
-    | v=FALSE
+@init{require_once 'Erfurt/Sparql/Query2/BooleanLiteral.php'; \$v=null;}
+@after{\$value = new Erfurt_Sparql_Query2_BooleanLiteral((bool)\$v);}
+    : TRUE {\$v=1;}
+    | FALSE {\$v=0;}
     ;
 
 /* sparql 1.0 r66 */
@@ -523,15 +524,11 @@ prefixedName
 
 /* sparql 1.0 r69 */
 blankNode returns [$value]
-@init{require_once 'Erfurt/Sparql/Query2/BlankNode.php';}
-@after{\$value = new Erfurt_Sparql_Query2_BlankNode($v.text);}
-    : v=BLANK_NODE_LABEL
-    | v=ANON
+@init{require_once 'Erfurt/Sparql/Query2/BlankNode.php'; \$v=null;}
+@after{\$value = new Erfurt_Sparql_Query2_BlankNode(\$v);}
+    : v=BLANK_NODE_LABEL {\$v = $v.text;}
+    | OPEN_SQUARE_BRACE (WS)* CLOSE_SQUARE_BRACE {\$v='';}
     ;
-
-
-
-
 
 BASE
     : ('B'|'b')('A'|'a')('S'|'s')('E'|'e')
@@ -858,18 +855,18 @@ ECHAR
     : '\\' ('t' | 'b' | 'n' | 'r' | 'f' | '\\' | '"' | '\'')
     ;
 
-NIL
-    : OPEN_BRACE WS* CLOSE_BRACE
-    ;
+//NIL
+//    : OPEN_BRACE WS* CLOSE_BRACE
+//    ;
 
 //fragment
 WS
     : (' '| '\t'| EOL) {$channel=HIDDEN; }
     ;
 
-ANON
-    : OPEN_SQUARE_BRACE (WS)* CLOSE_SQUARE_BRACE {\$this->setText(""); }
-    ;
+//ANON
+//    : OPEN_SQUARE_BRACE (WS)* CLOSE_SQUARE_BRACE {\$this->setText(""); }
+//    ;
 
 fragment
 PN_CHARS_BASE
