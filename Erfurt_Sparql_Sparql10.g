@@ -236,7 +236,9 @@ argList returns [$value]
 
 /* sparql 1.0 r30 */
 constructTemplate returns [$value]
-@init{\$value = new Erfurt_Sparql_Query2_ConstructTemplate();}
+@init{
+require_once 'Erfurt/Sparql/Query2/ConstructTemplate.php';
+\$value = new Erfurt_Sparql_Query2_ConstructTemplate();}
     : OPEN_CURLY_BRACE (constructTriples {\$value->setElements($constructTriples.value);})? CLOSE_CURLY_BRACE
     ;
 
@@ -255,15 +257,18 @@ triplesSameSubject returns [$value]
 
 /* sparql 1.0 r33 */
 propertyListNotEmpty returns [$value]
-@init{\$value = array();\$prop=array();}
-    : v1=verb ol1=objectList {\$prop['pred']=$v1.value; \$prop['obj']=$ol1.value; \$value []= \$prop;}
-        ( SEMICOLON ( v2=verb ol2=objectList {\$prop['pred']=$v2.value; \$prop['obj']=$ol2.value; \$value []= \$prop;})? )*
+@init{require_once 'Erfurt/Sparql/Query2/PropertyList.php';
+\$value = new Erfurt_Sparql_Query2_PropertyList();}
+    : v1=verb ol1=objectList {\$value->addProperty($v1.value, $ol1.value);}
+        ( SEMICOLON ( v2=verb ol2=objectList {\$value->addProperty($v2.value, $ol2.value);})? )*
     ;
 
 /* sparql 1.0 r34 */
 propertyList returns [$value]
-@init{\$value = array();}
-    : (propertyListNotEmpty {\$value = $propertyListNotEmpty.value;})?
+@init{require_once 'Erfurt/Sparql/Query2/PropertyList.php';
+\$v=null;}
+@after{\$value=\$v?\$v:new Erfurt_Sparql_Query2_PropertyList();}
+    : (propertyListNotEmpty {\$v = $propertyListNotEmpty.value;})?
     ;
 
 /* sparql 1.0 r35 */
@@ -293,7 +298,8 @@ triplesNode returns [$value]
 
 /* sparql 1.0 r39 */
 blankNodePropertyList returns [$value]
-    : OPEN_SQUARE_BRACE propertyListNotEmpty CLOSE_SQUARE_BRACE {\$value = $propertyListNotEmpty.value;}
+@init{require_once 'Erfurt/Sparql/Query2/BlankNodePropertyList.php';}
+    : OPEN_SQUARE_BRACE propertyListNotEmpty CLOSE_SQUARE_BRACE {\$value = new Erfurt_Sparql_Query2_BlankNodePropertyList($propertyListNotEmpty.value);}
     ;
 
 /* sparql 1.0 r40 */

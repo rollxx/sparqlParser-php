@@ -266,7 +266,7 @@ VAR2
     ;
 
 LANGTAG
-    : '@' (('a'..'z')('A'..'Z'))+ (MINUS (('a'..'z')('A'..'Z')('0'..'9'))+)*
+    : '@' (('a'..'z' | 'A'..'Z'))+ (MINUS (('a'..'z' | 'A'..'Z')('0'..'9'))+)*
     {\$this->setText(substr(\$this->getText(), 1, strlen(\$this->getText()) - 1)); }
     ;
 
