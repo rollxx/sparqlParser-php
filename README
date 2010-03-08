@@ -1,0 +1,5 @@
+To include the php runtime for antlr please checkout the project:
+
+svn checkout http://antlrphpruntime.googlecode.com/svn/trunk/runtime/Php antlrphpruntime
+
+and adjust the path in your application
